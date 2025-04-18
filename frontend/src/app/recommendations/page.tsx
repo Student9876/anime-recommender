@@ -118,7 +118,7 @@ export default function Recommendations() {
               )}
             </div>
             <div>
-              <h1 className="text-2xl font-bold">{userProfile?.name}'s Anime Profile</h1>
+              <h1 className="text-2xl font-bold">{userProfile?.name}&apos;s Anime Profile</h1>
               <p className="text-gray-300">Joined: {userProfile?.joined_at && new Date(userProfile.joined_at).toLocaleDateString()}</p>
             </div>
           </div>
@@ -203,7 +203,7 @@ export default function Recommendations() {
             Based on your watching history, we think you might enjoy these anime:
           </p>
           <div className="bg-gray-900 p-6 rounded-lg text-center">
-            <p className="text-lg mb-4">We're analyzing your taste...</p>
+            <p className="text-lg mb-4">We&apos;re analyzing your taste...</p>
             <Link 
               href="#" 
               className="inline-block bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded transition duration-300"

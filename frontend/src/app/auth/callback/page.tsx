@@ -7,25 +7,25 @@ import Image from "next/image";
 export default function MalCallback() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+//   const [loading, setLoading] = useState(true);
+//   const [error, setError] = useState<string | null>(null);
   const [authCode, setAuthCode] = useState<string | null>(null);
 
   useEffect(() => {
     // Extract the authorization code from URL parameters
     const code = searchParams.get('code');
-    const state = searchParams.get('state');
+    // const state = searchParams.get('state');
     const errorParam = searchParams.get('error');
 
     if (errorParam) {
-      setError(`Authentication failed: ${errorParam}`);
-      setLoading(false);
+    //   setError(`Authentication failed: ${errorParam}`);
+    //   setLoading(false);
       return;
     }
 
     if (!code) {
-      setError('No authorization code received from MyAnimeList');
-      setLoading(false);
+    //   setError('No authorization code received from MyAnimeList');
+    //   setLoading(false);
       return;
     }
 
@@ -34,13 +34,13 @@ export default function MalCallback() {
 
     // Store the auth code in state
     setAuthCode(code);
-    setLoading(false);
+    // setLoading(false);
   }, [searchParams]);
 
   const handleContinue = async () => {
     if (!authCode) return;
 
-    setLoading(true);
+    // setLoading(true);
     
     try {
       // Exchange the code for an access token
@@ -69,8 +69,8 @@ export default function MalCallback() {
       router.push('/recommendations');
     } catch (err) {
       console.error('Token exchange error:', err);
-      setError('Failed to complete authentication');
-      setLoading(false);
+    //   setError('Failed to complete authentication');
+    //   setLoading(false);
     }
   };
 
