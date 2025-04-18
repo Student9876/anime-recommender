@@ -11,7 +11,7 @@ export default function Login() {
   useEffect(() => {
     // Taking parameters from environment variables
     const clientId = process.env.NEXT_PUBLIC_MAL_CLIENT_ID || "";
-    const redirectUri = process.env.NEXT_PUBLIC_MAL_REDIRECT_URI || "";
+    const redirectUri = process.env.NEXT_PUBLIC_MAL_REDIRECT_URI || "http://localhost:3000/auth/callback";
 
     // Generate state and code challenge for PKCE
     const state = generateStateValue();

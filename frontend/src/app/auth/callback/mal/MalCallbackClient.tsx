@@ -5,18 +5,21 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 
-export default function MalCallback() {
+export default function MalCallbackClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [authCode, setAuthCode] = useState<string | null>(null);
+  const [tokenSuccess, setTokenSuccess] = useState(false);
 
   useEffect(() => {
     // Extract the authorization code from URL parameters
     const code = searchParams.get('code');
     const state = searchParams.get('state');
     const errorParam = searchParams.get('error');
+
+    console.log("Callback received with code:", code ? `${code.substring(0, 5)}...` : 'none');
 
     if (errorParam) {
       setError(`Authentication failed: ${errorParam}`);
@@ -33,7 +36,7 @@ export default function MalCallback() {
     // Validate state parameter
     const storedState = localStorage.getItem('oauthState');
     if (state !== storedState) {
-      setError('Invalid state parameter, possible security issue');
+      setError(`Invalid state parameter, possible security issue`);
       setLoading(false);
       return;
     }
@@ -42,6 +45,19 @@ export default function MalCallback() {
     setAuthCode(code);
     setLoading(false);
   }, [searchParams]);
+
+  // Effect to handle navigation once token exchange is successful
+  useEffect(() => {
+    if (tokenSuccess) {
+      console.log("Token exchange successful, redirecting to recommendations...");
+      // Use a timeout to ensure the state updates complete first
+      const redirectTimer = setTimeout(() => {
+        router.push('/recommendations');
+      }, 1000);
+      
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [tokenSuccess, router]);
 
   const handleContinue = async () => {
     if (!authCode) return;
@@ -56,34 +72,37 @@ export default function MalCallback() {
         throw new Error('Code verifier not found, cannot complete authentication');
       }
       
-      const clientId = process.env.NEXT_PUBLIC_MAL_CLIENT_ID;
-      const clientSecret = process.env.NEXT_PUBLIC_MAL_CLIENT_SECRET || '';
-      const redirectUri = process.env.NEXT_PUBLIC_MAL_REDIRECT_URI;
+      console.log("Exchanging code for token with verifier:", codeVerifier.substring(0, 5) + "...");
       
-      // Exchange the code for an access token
-      const tokenResponse = await fetch('https://myanimelist.net/v1/oauth2/token', {
+      // Exchange the code for an access token using our API route
+      const tokenResponse = await fetch('/api/auth/token', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Type': 'application/json',
         },
-        body: new URLSearchParams({
-          client_id: clientId || '',
-          client_secret: clientSecret,
-          grant_type: 'authorization_code',
+        body: JSON.stringify({
           code: authCode,
-          redirect_uri: redirectUri || '',
-          code_verifier: codeVerifier,
-        }).toString(),
+          codeVerifier: codeVerifier,
+        }),
       });
+      
+      // Check for non-JSON response
+      const contentType = tokenResponse.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await tokenResponse.text();
+        console.error("Non-JSON response:", textResponse.substring(0, 200));
+        throw new Error(`Server returned invalid response format`);
+      }
       
       const tokenData = await tokenResponse.json();
       
       if (!tokenResponse.ok) {
-        console.error('Token exchange failed:', tokenData);
-        throw new Error(tokenData.error || 'Failed to exchange code for token');
+        console.error("Token exchange error:", tokenData);
+        throw new Error(tokenData.error || tokenData.message || 'Failed to exchange code for token');
       }
       
       // Store the tokens
+      console.log("Token received successfully!");
       localStorage.setItem('malAccessToken', tokenData.access_token);
       if (tokenData.refresh_token) {
         localStorage.setItem('malRefreshToken', tokenData.refresh_token);
@@ -93,8 +112,9 @@ export default function MalCallback() {
       localStorage.removeItem('oauthState');
       localStorage.removeItem('codeVerifier');
       
-      // Redirect to recommendations page
-      router.push('/recommendations');
+      // Set success state to trigger the redirect
+      setTokenSuccess(true);
+      
     } catch (err) {
       console.error('Token exchange error:', err);
       setError(err instanceof Error ? err.message : 'Failed to complete authentication');
@@ -107,7 +127,8 @@ export default function MalCallback() {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-indigo-800 to-purple-800 text-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white mx-auto mb-4"></div>
-          <p>Processing your authentication...</p>
+          <p className="mb-2">Processing your authentication...</p>
+          {tokenSuccess && <p className="text-green-300">Redirecting to your recommendations...</p>}
         </div>
       </div>
     );
@@ -128,6 +149,19 @@ export default function MalCallback() {
     );
   }
 
+  if (tokenSuccess) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-indigo-800 to-purple-800 text-white">
+        <div className="text-center">
+          <div className="text-green-400 text-5xl mb-4">✓</div>
+          <h1 className="text-2xl font-bold mb-2">Successfully Authenticated!</h1>
+          <p className="mb-4">Redirecting to your recommendations...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white mx-auto"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-indigo-800 to-purple-800 text-white">
       <div className="max-w-md w-full bg-gray-900 bg-opacity-50 rounded-lg shadow-lg p-8 text-center">
@@ -140,7 +174,7 @@ export default function MalCallback() {
         <div className="mb-8">
           <div className="text-green-400 text-5xl mb-4">✓</div>
           <h1 className="text-2xl font-bold mb-2">MyAnimeList Connected!</h1>
-          <p>We&apos;ve successfully connected to your MAL account.</p>
+          <p>We&apos;ve successfully received authorization from your MAL account.</p>
         </div>
         
         <button
